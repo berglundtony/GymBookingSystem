@@ -11,6 +11,7 @@ namespace GymBookingSystem.Data
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityRole, string>
     {
         public DbSet<GymClass> GymClass { get; set; }
+        public DbSet<ApplicationUserGymClass> ApplicationGyms { get; set; }
 
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)

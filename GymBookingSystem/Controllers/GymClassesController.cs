@@ -9,7 +9,6 @@ using GymBookingSystem.Data;
 using GymBookingSystem.Models;
 using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;
-using GymBookingSystem.Models.ViewModels;
 
 namespace GymBookingSystem.Controllers
 {
@@ -36,7 +35,9 @@ namespace GymBookingSystem.Controllers
 
 
             var userGuid = _userManager.GetUserId(User);
-            if (userGuid == null) { return NotFound(); }
+            if (userGuid == null) {
+                return LocalRedirect("/Identity/Account/Login");
+            }
 
             var attendingMember = await db.GymClass.Include(u => u.AttendingMembers)
                 .FirstOrDefaultAsync(gc => gc.Id == id);
