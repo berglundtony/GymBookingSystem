@@ -13,6 +13,6 @@ namespace GymBookingSystem.Models.ViewModels
         public TimeSpan Duration { get; set; }
         public DateTime EndTime { get { return StartTime + Duration; } }
         public String Description { get; set; }
-        public bool Booked { get; set; }
+        public bool Attending{ get; set; }
     }
 }

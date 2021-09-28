@@ -1,5 +1,6 @@
 using GymBookingSystem.Data;
 using GymBookingSystem.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpsPolicy;
@@ -37,8 +38,14 @@ namespace GymBookingSystem
                 .AddRoles<IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>();
  
-            services.AddControllersWithViews();
-            //object p = services.AddAutoMapper(typeof(Startup));
+            services.AddControllersWithViews(opt =>
+            {
+                var policy = new AuthorizationPolicyBuilder()
+                                    .RequireAuthenticatedUser()
+                                    .RequireRole("Member")
+                                    .Build();
+            });
+            services.AddAutoMapper(typeof(MapperProfile));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

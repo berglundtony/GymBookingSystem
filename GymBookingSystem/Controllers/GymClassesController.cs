@@ -19,75 +19,74 @@ namespace GymBookingSystem.Controllers
     public class GymClassesController : Controller
     {
         private readonly ApplicationDbContext db;
-        private readonly UserManager<ApplicationUser> _userManager;
-        //private readonly IMapper mapper;
+        private readonly UserManager<ApplicationUser> userManager;
+        private readonly IMapper mapper;
 
-        public GymClassesController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public GymClassesController(ApplicationDbContext context, IMapper mapper,  UserManager<ApplicationUser> userManager)
         {
             db = context;
-            _userManager = userManager;
-            //this.mapper = mapper;
+            this.mapper = mapper;
+            this.userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
         }
 
         // GET: GymClasses
-        public async Task<IActionResult> Index()
+        [AllowAnonymous]
+        public async Task<IActionResult> Index(IndexViewModel ivm, string type)
         {
-            var userId = _userManager.GetUserId(User);
-            //var model = mapper.ProjectTo<GymClassViewModel>(db.GymClass);
-            bool isBooked = false;
-            var gymclasses = await db.GymClass.ToListAsync();
-           
-            var _gymlist = new List<GymClassViewModel>();
+            var userId = userManager.GetUserId(User);
 
-            foreach (var gymclass in gymclasses)
+            if (type == "Booked")
             {
-                var id = gymclass.Id;
-                isBooked = await Attending(userId, id);
-                _gymlist.Add(new GymClassViewModel
-                {
-                     Id = gymclass.Id,
-                     Name = gymclass.Name,
-                     Description = gymclass.Description,
-                     StartTime = gymclass.StartTime,
-                     Duration = gymclass.Duration,
-                     Booked = isBooked
-                });
+                var classes = db.GymClass.Include(g => g.AttendingMembers).ToList();
+                var data = mapper.Map<IEnumerable<GymClassViewModel>>(classes,
+                    opt => opt.Items.Add("Id", userId)).Where(a => a.Attending == true);
+                return View(mapper.Map<IndexViewModel>(data));
             }
-
-            return View(_gymlist);
-        }
-
-        private async Task<bool> Attending(string userId, int id)
-        {
-            var attending = await db.ApplicationGyms.FindAsync(userId, id);
-
-            if (attending is null)
+            else if (type == "History")
             {
-               return false;
+                var classes = await db.GymClass.Include(g => g.AttendingMembers)
+                    .IgnoreQueryFilters().ToListAsync();
+
+                var data =  mapper.Map<IEnumerable<GymClassViewModel>>(classes,
+                    opt => opt.Items.Add("Id", userId)).Where(a => a.Attending == true && a.StartTime < DateTime.Now);
+                return View(mapper.Map<IndexViewModel>(data));
+            }
+            else if (ivm.ShowAll)
+            {
+                var classes = await db.GymClass.Include(g => g.AttendingMembers).IgnoreQueryFilters().ToListAsync();
+                var result = mapper.Map <IndexViewModel>(classes);
+                return View(result);
             }
             else
             {
-                return true;
+                if (User.Identity.IsAuthenticated)
+                {
+                    var classes = db.GymClass.Include(g => g.AttendingMembers).ToList();
+                    var result = mapper.Map<IndexViewModel>(classes,
+                        opt => opt.Items.Add("Id", userId));
+
+                    return View(result);
+                }
+                else
+                {
+                    var model = mapper.Map<IndexViewModel>(db.GymClass.ToList());
+                    return View(model);
+                }
             }
         }
 
-        [Authorize]
         public async Task<IActionResult> BookingToggle(int id)
         {
             if (id == null) { return NotFound(); }
 
-            var userGuid = _userManager.GetUserId(User);
+            var userGuid = userManager.GetUserId(User);
             if (userGuid == null) {
                 return LocalRedirect("/Identity/Account/Login");
             }
 
-            var attendingMember = await db.GymClass.Include(u => u.AttendingMembers)
-                .FirstOrDefaultAsync(gc => gc.Id == id);
-
             var presentedMember = await db.ApplicationGyms.FindAsync(userGuid, id);
 
-
-            if (attendingMember.AttendingMembers.Any(a => a.ApplicationUserId == userGuid))
+            if (presentedMember is not null)
             {
                     db.Remove(presentedMember);
                     db.SaveChanges();
@@ -102,7 +101,6 @@ namespace GymBookingSystem.Controllers
                 await db.AddAsync(applicationUser);
                 await db.SaveChangesAsync();
             }
-
             return RedirectToAction("Index");
         }
 
@@ -117,6 +115,7 @@ namespace GymBookingSystem.Controllers
             var gymClass = await db.GymClass
                 .Include(a => a.AttendingMembers)
                 .ThenInclude(a => a.ApplicationUser)
+                .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(m => m.Id == id);
             if (gymClass == null)
             {
@@ -127,7 +126,7 @@ namespace GymBookingSystem.Controllers
         }
 
         // GET: GymClasses/Create
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public IActionResult Create()
         {
             return Request.IsAjax() ? PartialView("CreatePartial") : View();
@@ -138,7 +137,7 @@ namespace GymBookingSystem.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create([Bind("Id,Name,StartTime,Duration,Description")] GymClass gymClass)
         {
             if (ModelState.IsValid)
@@ -151,7 +150,7 @@ namespace GymBookingSystem.Controllers
         }
 
         // GET: GymClasses/Edit/5
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
@@ -172,7 +171,7 @@ namespace GymBookingSystem.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Edit(int id, [Bind("Id,Name,StartTime,Duration,Description")] GymClass gymClass)
         {
             if (id != gymClass.Id)
@@ -204,7 +203,7 @@ namespace GymBookingSystem.Controllers
         }
 
         // GET: GymClasses/Delete/5
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
@@ -225,7 +224,7 @@ namespace GymBookingSystem.Controllers
         // POST: GymClasses/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var gymClass = await db.GymClass.FindAsync(id);

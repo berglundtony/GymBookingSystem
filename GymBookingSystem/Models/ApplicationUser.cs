@@ -10,6 +10,10 @@ namespace GymBookingSystem.Models
     public class ApplicationUser : IdentityUser
     {
         //Navigation property
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public string FullName { get { return FirstName + " " + LastName; } }
+        public DateTime TimeOfRegistration { get; set; }
         public ICollection<ApplicationUserGymClass> AttendedClasses { get; set;}
 
       

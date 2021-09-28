@@ -29,7 +29,7 @@ namespace GymBookingSystem.Data
             userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
             if (userManager is null) throw new NullReferenceException(nameof(UserManager<ApplicationUser>));
 
-            var roleNames = new[] { "Student", "Admin" };
+            var roleNames = new[] { "Member", "Admin" };
             var adminEmail = "admin@gym.se";
 
             var gymClasses = GetGymClasses();
@@ -83,7 +83,10 @@ namespace GymBookingSystem.Data
             var admin = new ApplicationUser
             {
                 UserName = adminEmail,
-                Email = adminEmail
+                Email = adminEmail,
+                FirstName = "Admin",
+                LastName = "Adminsson",
+                TimeOfRegistration = DateTime.Now
             };
 
             var result = await userManager.CreateAsync(admin, adminPW);
@@ -100,10 +103,7 @@ namespace GymBookingSystem.Data
                 if (await userManager.IsInRoleAsync(admin, role)) continue;
                 var result = await userManager.AddToRoleAsync(admin, role);
                 if (!result.Succeeded) throw new Exception(string.Join("\n", result.Errors));
-
-
             }
-
         }
     }
 }
